@@ -13,7 +13,8 @@ public class DatabaseConnection {
     private static Map<String, String> env = new HashMap<>();
 
     static {
-        try (BufferedReader br = new BufferedReader(new FileReader(".env"))) {
+        String envPath = "/amuhome/a24029395/microservices/Projet_r4.01_Microservices/PlatsUtilisateurs/.env";
+        try (BufferedReader br = new BufferedReader(new FileReader(envPath))) {
             String line;
             while ((line = br.readLine()) != null) {
                 if(line.contains("=")) {
@@ -23,7 +24,7 @@ public class DatabaseConnection {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Impossible de lire le fichier .env");
+            System.err.println("Impossible de lire le fichier .env : " + envPath);
         }
     }
 

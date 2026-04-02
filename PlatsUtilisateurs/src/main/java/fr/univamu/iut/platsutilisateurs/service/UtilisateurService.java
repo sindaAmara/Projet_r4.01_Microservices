@@ -1,18 +1,14 @@
 package fr.univamu.iut.platsutilisateurs.service;
 
-
 import fr.univamu.iut.platsutilisateurs.model.entite.Utilisateur;
 import fr.univamu.iut.platsutilisateurs.repository.UtilisateurRepository;
-
+import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
 
+@ApplicationScoped
 public class UtilisateurService {
 
-    private final UtilisateurRepository repository;
-
-    public UtilisateurService() {
-        this.repository = new UtilisateurRepository();
-    }
+    private UtilisateurRepository repository = new UtilisateurRepository();
 
     public List<Utilisateur> getAllUtilisateurs() {
         return repository.getAllUtilisateurs();
@@ -23,12 +19,6 @@ public class UtilisateurService {
     }
 
     public boolean createUtilisateur(Utilisateur utilisateur) {
-        // Exemple de règle métier : nom/prénom non vide
-        if (utilisateur.getNom().isEmpty() || utilisateur.getPrenom().isEmpty()) {
-            System.err.println("Nom ou prénom invalide");
-            return false;
-        }
-
         return repository.addUtilisateur(utilisateur);
     }
 
