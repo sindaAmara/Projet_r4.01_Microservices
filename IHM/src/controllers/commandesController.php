@@ -45,8 +45,8 @@ class CommandesController
         }
 
         if (isset($_GET['cancel'])) {
-            $commandeId = (int) $_GET['cancel'];
-            ApiClient::delete(API_COMMANDES . '/commandes/' . $commandeId);
+            $commandeId = $_GET['cancel'];
+            ApiClient::delete(API_COMMANDES . '/commandes/' . urlencode($commandeId));
             header('Location: index.php?page=commandes');
             exit;
         }

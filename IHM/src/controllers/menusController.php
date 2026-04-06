@@ -85,6 +85,17 @@ class MenusController
             $existingMenus = ApiClient::get(API_MENUS . '/menus');
             if ($existingMenus === null) {
                 $existingMenus = [];
+            } else if (is_object($existingMenus)) {
+                $existingMenus = array_values((array)$existingMenus);
+            }
+
+            // Récupérer tous les plats pour résoudre les platsIds si nécessaire
+            $allPlats = ApiClient::get(API_PLATS . '/plats');
+            $platsMap = [];
+            if ($allPlats !== null) {
+                foreach ($allPlats as $p) {
+                    $platsMap[$p['id']] = $p;
+                }
             }
 
             // Vérifier si un menu identique existe déjà (même nom, même créateur, même date)
@@ -92,24 +103,31 @@ class MenusController
             $duplicateExists = false;
 
             foreach ($existingMenus as $menu) {
-                if (
-                    $menu['nom'] === $nom &&
-                    $menu['createurNom'] === $createurNom &&
-                    $menu['dateCreation'] === $todayDate &&
-                    count($menu['plats']) === count($platsIds)
-                ) {
-                    // Vérifier que les plats sont identiques
-                    $platsMatch = true;
+                // Normaliser les plats du menu existant
+                $existingPlatIds = [];
+                if (isset($menu['plats']) && is_array($menu['plats'])) {
                     foreach ($menu['plats'] as $plat) {
-                        if (!in_array($plat['id'], $platsIds)) {
-                            $platsMatch = false;
-                            break;
-                        }
+                        $existingPlatIds[] = (int) $plat['id'];
                     }
-                    if ($platsMatch) {
-                        $duplicateExists = true;
-                        break;
+                } elseif (isset($menu['platsIds']) && is_array($menu['platsIds'])) {
+                    foreach ($menu['platsIds'] as $pid) {
+                        $existingPlatIds[] = (int) $pid;
                     }
+                }
+
+                sort($existingPlatIds);
+                $normalizedPlatsIds = $platsIds;
+                sort($normalizedPlatsIds);
+
+                if (
+                    ($menu['nom'] ?? '') === $nom &&
+                    ($menu['createurNom'] ?? '') === $createurNom &&
+                    ($menu['dateCreation'] ?? '') === $todayDate &&
+                    count($existingPlatIds) === count($normalizedPlatsIds) &&
+                    $existingPlatIds === $normalizedPlatsIds
+                ) {
+                    $duplicateExists = true;
+                    break;
                 }
             }
 
