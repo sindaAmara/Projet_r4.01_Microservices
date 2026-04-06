@@ -1,23 +1,26 @@
-<?php
+<?php // ihm/src/controllers/PlatsController.php
 
-class platsController
+/**
+ * Contrôleur pour la gestion des plats.
+ *
+ * Récupère les données de l'API Plats et prépare les vues associées.
+ */
+class PlatsController
 {
     /**
-     * Récupère tous les plats utilisateurs depuis l'API
-     * @return array|false Les plats ou false en cas d'erreur
+     * Affiche la liste de tous les plats.
+     *
+     * @return void
      */
-    public static function getAllPlats()
+    public function index()
     {
-        return ApiClient::get(API_PLATS_UTILISATEURS . '/plats');
-    }
+        $currentPage = 'plats';
+        $plats = ApiClient::get(API_PLATS . '/plats');
 
-    /**
-     * Récupère un plat spécifique par son ID
-     * @param int $id L'ID du plat
-     * @return array|false Le plat ou false en cas d'erreur
-     */
-    public static function getPlatById($id)
-    {
-        return ApiClient::get(API_PLATS_UTILISATEURS . '/plats/' . intval($id));
+        if ($plats === null) {
+            $plats = [];
+        }
+
+        require __DIR__ . '/../views/plats/list.php';
     }
 }

@@ -1,54 +1,158 @@
-<?php
+<?php // ihm/src/controllers/MenusController.php
 
-class menusController
+/**
+ * Contrôleur pour la gestion des menus.
+ *
+ * Gère l'affichage, la création, la modification et la suppression des menus
+ * via l'API Menus distante.
+ */
+class MenusController
 {
     /**
-     * Récupère tous les menus depuis l'API
-     * @return array|false Les menus ou false en cas d'erreur
+     * Affiche la liste de tous les menus avec leurs détails.
+     *
+     * Gère également la suppression d'un menu si un paramètre GET `delete` est présent.
+     *
+     * @return void
      */
-    public static function getAllMenus()
+    public function index()
     {
-        return ApiClient::get(API_MENUS . '/menus');
+        $currentPage = 'menus';
+        if (isset($_GET['delete'])) {
+            $menuId = $_GET['delete'];
+            ApiClient::delete(API_MENUS . '/menus/' . $menuId);
+            header('Location: index.php?page=menus');
+            exit;
+        }
+
+        $menus = ApiClient::get(API_MENUS . '/menus');
+
+        if ($menus === null) {
+            $menus = [];
+        }
+
+        $plats = ApiClient::get(API_PLATS . '/plats');
+
+        if ($plats === null) {
+            $plats = [];
+        }
+
+        $platsMap = [];
+        foreach ($plats as $plat) {
+            $platsMap[$plat['id']] = $plat;
+        }
+
+        // Normaliser la structure des menus pour assurer la cohérence
+        foreach ($menus as &$menu) {
+            // Si le menu a platsIds au lieu de plats, reconstruire la liste des plats
+            if (isset($menu['platsIds']) && !isset($menu['plats'])) {
+                $menu['plats'] = [];
+                foreach ($menu['platsIds'] as $platId) {
+                    if (isset($platsMap[$platId])) {
+                        $menu['plats'][] = $platsMap[$platId];
+                    }
+                }
+            }
+        }
+
+        require __DIR__ . '/../views/menus/list.php';
     }
 
     /**
-     * Récupère un menu spécifique par son ID
-     * @param int $id L'ID du menu
-     * @return array|false Le menu ou false en cas d'erreur
+     * Affiche le formulaire de création d'un nouveau menu.
+     *
+     * Récupère la liste des plats disponibles pour les cases à cocher.
+     * Gère la soumission du formulaire via POST.
+     *
+     * @return void
      */
-    public static function getMenuById($id)
+    public function create()
     {
-        return ApiClient::get(API_MENUS . '/menus/' . intval($id));
-    }
+        $currentPage = 'composer';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $nom = trim($_POST['nom'] ?? '');
+            $createurNom = trim($_POST['createur_nom'] ?? '');
+            $platsIds = isset($_POST['plats']) ? array_map('intval', $_POST['plats']) : [];
 
-    /**
-     * Crée un nouveau menu
-     * @param array $data Les données du menu
-     * @return array|false Le menu créé ou false en cas d'erreur
-     */
-    public static function createMenu($data)
-    {
-        return ApiClient::post(API_MENUS . '/menus', $data);
-    }
+            // Valider les champs requis
+            if (empty($nom) || empty($createurNom)) {
+                $_SESSION['error'] = 'Le nom du menu et le créateur sont obligatoires.';
+                header('Location: index.php?page=composer');
+                exit;
+            }
 
-    /**
-     * Met à jour un menu
-     * @param int $id L'ID du menu
-     * @param array $data Les données à mettre à jour
-     * @return array|false Le menu mis à jour ou false en cas d'erreur
-     */
-    public static function updateMenu($id, $data)
-    {
-        return ApiClient::put(API_MENUS . '/menus/' . intval($id), $data);
-    }
+            // Récupérer tous les menus existants
+            $existingMenus = ApiClient::get(API_MENUS . '/menus');
+            if ($existingMenus === null) {
+                $existingMenus = [];
+            }
 
-    /**
-     * Supprime un menu
-     * @param int $id L'ID du menu
-     * @return bool True si succès, false sinon
-     */
-    public static function deleteMenu($id)
-    {
-        return ApiClient::delete(API_MENUS . '/menus/' . intval($id));
+            // Vérifier si un menu identique existe déjà (même nom, même créateur, même date)
+            $todayDate = date('Y-m-d');
+            $duplicateExists = false;
+
+            foreach ($existingMenus as $menu) {
+                if (
+                    $menu['nom'] === $nom &&
+                    $menu['createurNom'] === $createurNom &&
+                    $menu['dateCreation'] === $todayDate &&
+                    count($menu['plats']) === count($platsIds)
+                ) {
+                    // Vérifier que les plats sont identiques
+                    $platsMatch = true;
+                    foreach ($menu['plats'] as $plat) {
+                        if (!in_array($plat['id'], $platsIds)) {
+                            $platsMatch = false;
+                            break;
+                        }
+                    }
+                    if ($platsMatch) {
+                        $duplicateExists = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($duplicateExists) {
+                $_SESSION['error'] = 'Ce menu existe déjà dans le système.';
+                header('Location: index.php?page=composer');
+                exit;
+            }
+
+            $plats = ApiClient::get(API_PLATS . '/plats');
+            $platsObjects = [];
+            $prixTotal = 0;
+
+            if ($plats !== null) {
+                foreach ($plats as $plat) {
+                    if (in_array($plat['id'], $platsIds)) {
+                        $platsObjects[] = $plat;
+                        $prixTotal += (float) $plat['prix'];
+                    }
+                }
+            }
+
+            $data = [
+                'nom' => $nom,
+                'createurNom' => $createurNom,
+                'dateCreation' => $todayDate,
+                'plats' => $platsObjects,
+                'prixTotal' => round($prixTotal, 2)
+            ];
+
+            ApiClient::post(API_MENUS . '/menus', $data);
+
+
+            header('Location: index.php?page=menus');
+            exit;
+        }
+
+        $plats = ApiClient::get(API_PLATS . '/plats');
+
+        if ($plats === null) {
+            $plats = [];
+        }
+
+        require __DIR__ . '/../views/menus/form.php';
     }
 }
