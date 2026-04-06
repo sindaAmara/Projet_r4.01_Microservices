@@ -29,6 +29,8 @@ class MenusController
 
         if ($menus === null) {
             $menus = [];
+        } else if (is_object($menus)) {
+            $menus = array_values((array)$menus);
         }
 
         $plats = ApiClient::get(API_PLATS . '/plats');
@@ -39,21 +41,24 @@ class MenusController
 
         $platsMap = [];
         foreach ($plats as $plat) {
-            $platsMap[$plat['id']] = $plat;
+            $platsMap[(string)$plat['id']] = $plat;
         }
 
-        // Normaliser la structure des menus pour assurer la cohérence
-        foreach ($menus as &$menu) {
-            // Si le menu a platsIds au lieu de plats, reconstruire la liste des plats
-            if (isset($menu['platsIds']) && !isset($menu['plats'])) {
+        // Normaliser la structure des menus : si platsIds existe sans plats, reconstruire
+        $normalizedMenus = [];
+        foreach ($menus as $menu) {
+            if (isset($menu['platsIds']) && is_array($menu['platsIds']) && !isset($menu['plats'])) {
                 $menu['plats'] = [];
                 foreach ($menu['platsIds'] as $platId) {
-                    if (isset($platsMap[$platId])) {
-                        $menu['plats'][] = $platsMap[$platId];
+                    $key = (string)$platId;
+                    if (isset($platsMap[$key])) {
+                        $menu['plats'][] = $platsMap[$key];
                     }
                 }
             }
+            $normalizedMenus[] = $menu;
         }
+        $menus = $normalizedMenus;
 
         require __DIR__ . '/../views/menus/list.php';
     }
@@ -74,92 +79,42 @@ class MenusController
             $createurNom = trim($_POST['createur_nom'] ?? '');
             $platsIds = isset($_POST['plats']) ? array_map('intval', $_POST['plats']) : [];
 
-            // Valider les champs requis
             if (empty($nom) || empty($createurNom)) {
                 $_SESSION['error'] = 'Le nom du menu et le créateur sont obligatoires.';
                 header('Location: index.php?page=composer');
                 exit;
             }
 
-            // Récupérer tous les menus existants
-            $existingMenus = ApiClient::get(API_MENUS . '/menus');
-            if ($existingMenus === null) {
-                $existingMenus = [];
-            } else if (is_object($existingMenus)) {
-                $existingMenus = array_values((array)$existingMenus);
-            }
-
-            // Récupérer tous les plats pour résoudre les platsIds si nécessaire
+            // Récupérer les plats disponibles
             $allPlats = ApiClient::get(API_PLATS . '/plats');
             $platsMap = [];
             if ($allPlats !== null) {
                 foreach ($allPlats as $p) {
-                    $platsMap[$p['id']] = $p;
+                    $platsMap[(string)$p['id']] = $p;
                 }
             }
 
-            // Vérifier si un menu identique existe déjà (même nom, même créateur, même date)
-            $todayDate = date('Y-m-d');
-            $duplicateExists = false;
-
-            foreach ($existingMenus as $menu) {
-                // Normaliser les plats du menu existant
-                $existingPlatIds = [];
-                if (isset($menu['plats']) && is_array($menu['plats'])) {
-                    foreach ($menu['plats'] as $plat) {
-                        $existingPlatIds[] = (int) $plat['id'];
-                    }
-                } elseif (isset($menu['platsIds']) && is_array($menu['platsIds'])) {
-                    foreach ($menu['platsIds'] as $pid) {
-                        $existingPlatIds[] = (int) $pid;
-                    }
-                }
-
-                sort($existingPlatIds);
-                $normalizedPlatsIds = $platsIds;
-                sort($normalizedPlatsIds);
-
-                if (
-                    ($menu['nom'] ?? '') === $nom &&
-                    ($menu['createurNom'] ?? '') === $createurNom &&
-                    ($menu['dateCreation'] ?? '') === $todayDate &&
-                    count($existingPlatIds) === count($normalizedPlatsIds) &&
-                    $existingPlatIds === $normalizedPlatsIds
-                ) {
-                    $duplicateExists = true;
-                    break;
-                }
-            }
-
-            if ($duplicateExists) {
-                $_SESSION['error'] = 'Ce menu existe déjà dans le système.';
-                header('Location: index.php?page=composer');
-                exit;
-            }
-
-            $plats = ApiClient::get(API_PLATS . '/plats');
+            // Construire les objets plats pour le nouveau menu
             $platsObjects = [];
             $prixTotal = 0;
 
-            if ($plats !== null) {
-                foreach ($plats as $plat) {
-                    if (in_array($plat['id'], $platsIds)) {
-                        $platsObjects[] = $plat;
-                        $prixTotal += (float) $plat['prix'];
-                    }
+            foreach ($platsIds as $platId) {
+                $key = (string)$platId;
+                if (isset($platsMap[$key])) {
+                    $platsObjects[] = $platsMap[$key];
+                    $prixTotal += (float)$platsMap[$key]['prix'];
                 }
             }
 
             $data = [
                 'nom' => $nom,
                 'createurNom' => $createurNom,
-                'dateCreation' => $todayDate,
+                'dateCreation' => date('Y-m-d'),
                 'plats' => $platsObjects,
                 'prixTotal' => round($prixTotal, 2)
             ];
 
             ApiClient::post(API_MENUS . '/menus', $data);
-
 
             header('Location: index.php?page=menus');
             exit;
