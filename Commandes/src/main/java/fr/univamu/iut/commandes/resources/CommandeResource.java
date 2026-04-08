@@ -27,7 +27,7 @@ public class CommandeResource {
         try {
             CommandeRepositoryMariadb commandeRepo = new CommandeRepositoryMariadb(
                     "jdbc:mariadb://mysql-mrcoton.alwaysdata.net:3306/mrcoton_menus",
-                    "mrcoton",
+                    "mrcoton_annonces",
                     "ouiouibaguette"
             );
             this.service = new CommandeService(commandeRepo);
