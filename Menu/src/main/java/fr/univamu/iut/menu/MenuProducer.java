@@ -11,16 +11,13 @@ public class MenuProducer {
     @ApplicationScoped
     public MenuRepositoryInterface openDbConnection() {
         try {
-            // Tentative de connexion
             return new MenuRepositoryMariadb(
                     "jdbc:mariadb://mysql-mrcoton.alwaysdata.net/mrcoton_menus",
                     "mrcoton_annonces",
                     "ouiouibaguette"
             );
         } catch (Exception e) {
-            // On affiche l'erreur dans la console pour débugger
             e.printStackTrace();
-            // On jette une exception Runtime pour stopper proprement
             throw new RuntimeException("Impossible de se connecter à la DB AlwaysData : " + e.getMessage());
         }
     }

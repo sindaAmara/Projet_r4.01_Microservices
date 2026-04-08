@@ -8,17 +8,19 @@ public class Menu {
     private String nomMenu;
     private int createurId;
     private String dateCreation; // On ajoute la date
+    private String dateMiseAJour;
     private List<Integer> platsIds;
 
     public Menu() {
         this.platsIds = new ArrayList<>();
     }
 
-    public Menu(int id, String nomMenu, int createurId, String dateCreation, List<Integer> platsIds) {
+    public Menu(int id, String nomMenu, int createurId, String dateCreation, String dateMiseAJour, List<Integer> platsIds) {
         this.id = id;
         this.nomMenu = nomMenu;
         this.createurId = createurId;
         this.dateCreation = dateCreation;
+        this.dateMiseAJour = dateMiseAJour;
         this.platsIds = platsIds;
     }
 
@@ -31,6 +33,8 @@ public class Menu {
     public void setCreateurId(int createurId) { this.createurId = createurId; }
     public String getDateCreation() { return dateCreation; }
     public void setDateCreation(String dateCreation) { this.dateCreation = dateCreation; }
+    public String getDateMiseAJour() { return dateMiseAJour; }
+    public void setDateMiseAJour(String dateMiseAJour) { this.dateMiseAJour = dateMiseAJour; }
     public List<Integer> getPlatsIds() { return platsIds; }
     public void setPlatsIds(List<Integer> platsIds) { this.platsIds = platsIds; }
 }
